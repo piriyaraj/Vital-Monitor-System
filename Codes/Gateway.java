@@ -1,143 +1,153 @@
+/**
+ * system provide the method for monitoring the vital monitor
+ * when the vital monitor start the connection is established to the gateway
+ * after that the vital monitor can sent the data to the gateway
+ * gateway can handle multiple vital monitor at same time
+*/
+
+// import modules
 import java.io.*;
 import java.net.*;
 import java.util.*;
-// import java.util.*;
+
 import java.util.concurrent.TimeUnit;
 
+// class handel the vital monitors separately 
 class VitalReader extends Thread{
-    byte[] barray;
-    String monitorId;
-    int port;
-    Socket vitalMonitorSocket = null;
-    InetAddress inetAddress;
+    /**
+     * it can handle every vital monitor connection
+     * take monitor as a parameter and make TCP connection with the vital monitor
+     * when the connection lost the vital monitor is removed from the gateway
+     */
+
+    String monitorId;        // vital monitor unique id
+    int port;                // vital monitor connection port
+    InetAddress ipAddress;   // ip address of the vital monitor
     Monitor monitor;
-    DatagramSocket dSocket;
-    String message;
-    VitalReader(byte[] barray,DatagramSocket dSocket){
-        this.barray=barray;
-        this.dSocket=dSocket;
+
+    VitalReader(Monitor monitor){
+        /**
+         * pass the decoded byte array that received form the socket packet
+         */
+        this.monitor=monitor;
     }
     public void run(){
-        try {
-            monitor = (Monitor) deserialize(barray);
-        }
-        catch(Exception e) {
-            e.printStackTrace();
-        }
+        /**
+         * the method handle the tread for the every vital monitor
+         */
+
+        monitor=this.monitor;
+
+        // get the monitor parameters
         monitorId = monitor.getMonitorID();
         port = monitor.getPort();
-        inetAddress = monitor.getIp();
-        //System.out.println("MonitorID: " + monitorId + " Port Number: " + port + " IP Address: " + inetAddress);
-
-        // TCP socket
-        try{
-            vitalMonitorSocket = new Socket(inetAddress, port);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
+        ipAddress = monitor.getIp();
 
         // Receiving message from vital monitors
-        InputStreamReader in;
-        BufferedReader br;
-        try {
-            in = new InputStreamReader(vitalMonitorSocket.getInputStream());
-            br = new BufferedReader(in);
-            message = br.readLine();
-            
-        } catch (Exception e) {
-            // e.printStackTrace();
-            message="Not Received";
-            //TODO: handle exception
+        InputStreamReader input;
+        BufferedReader readMessage;
+        String message;
+
+        while(true){   // getting the message every time from the vital monitor
+            try {
+                Socket socket = new Socket(ipAddress, port);          // make a tcp connection 
+                // read the message
+                input = new InputStreamReader(socket.getInputStream());
+                readMessage = new BufferedReader(input);
+                message = readMessage.readLine();
+                
+            } catch (Exception e) {
+                // e.printStackTrace();
+                message=">>>>>connection lost from "+monitorId+"<<<<<";
+                System.out.println(message);
+
+                monitorIdRemove(monitorId);
+                break;
+            }
+            System.out.println(message);
+
+            Delay(2);
         }
-        System.out.println(message);
-
-        customDelayInSeconds(2);
-            //Closing the broadcastSocket
     }
-    public static void customDelayInSeconds(int seconds) {
-    try {
-        TimeUnit.SECONDS.sleep(seconds);} 
-    catch (InterruptedException e) {
-        e.printStackTrace();}
-    }
-        public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
-        
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(data);
-        ObjectInputStream obj = new ObjectInputStream(byteStream);
-        return obj.readObject();
+    synchronized void monitorIdRemove(String monitorId){
+        /**
+         * handle the monitorList adding when the thread handle the veritable
+         */
+        Gateway.monitorList.remove(monitorId);
     }
 
-    public static String messageSerializer(Socket socket) throws IOException {
-            InputStreamReader in = new InputStreamReader(socket.getInputStream());
-            BufferedReader br = new BufferedReader(in);
-            String str = br.readLine();
-            return str;
+    public static void Delay(int seconds) {
+        /**
+         * make a delay for the receiving the message after the delay
+         */
+        try {
+            TimeUnit.SECONDS.sleep(seconds);
+        } 
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
 
 public class Gateway {
-    // Create a Datagramsocket with the localhost and port number 6000
+    /**
+     * handle the new vital monitor connection
+     * create the thread
+    */
+    public static List<String> monitorList = new ArrayList<>();
+
     public static void main(String[] args) {
-        int BROADCAST_PORT = 6001;
-        Monitor monitor;
-        String monitorId;
+        int BROADCAST_PORT = 6000;                    // broadcast port for reading the UDP connection
         DatagramSocket dSocket = null;
-        DatagramPacket packet = null;
-        byte[] barray = new byte[40000];
-        VitalReader vr1=null;
-        List<String> monitorList = new ArrayList<>();
-        while (true) {
+
+        byte[] buffer  = new byte[10000];             // reading the data packet
+
+        while (true) {                                // lisiting every new connection
             try {
                 // creating broadcast socket
                 dSocket = new DatagramSocket(BROADCAST_PORT);
                 
                 // broadcast packet
-                packet = new DatagramPacket(barray, barray.length);
+                DatagramPacket packet = new DatagramPacket(buffer , buffer.length);
                 dSocket.receive(packet);
-                monitor = (Monitor) deserialize(barray);
-                monitorId = monitor.getMonitorID();
-                if(!monitorList.contains(monitorId)){
-                    vr1=new VitalReader(barray,dSocket);
-                    vr1.start();
-                    monitorList.add(monitorId);
 
-                }
-                dSocket.close();
-
-                // Monitor properties
+                Monitor monitor = (Monitor) decodeSerialByte(buffer);   // decode the byte array
+                String monitorId = monitor.getMonitorID();
                 
+                // the Algorithm for handle same device and connection ,disconnection and reconnection
+                if(!monitorList.contains(monitorId)){
+                    VitalReader vr1=new VitalReader(monitor);
+                    vr1.start();
+                    monitorIdAdd(monitorId);
+                }   
             }
-
+            catch(SocketException se){  // error connecting broadcast
+                se.getStackTrace();
+                System.out.println("there is a error in connecting Socket with the broadcast port");
+            }
+            catch(ClassNotFoundException cnfe){
+                cnfe.getStackTrace();
+                System.out.println("there is some class not found");
+            }
             // Exception Handlings
-            catch (Exception e) {
-                e.getStackTrace();
+            catch (IOException ie) {
+                ie.getStackTrace();
+            }
+            finally{
+                dSocket.close();
             }
         } 
     }
-
-    // Custom Delay
-    private static void customDelayInSeconds(int seconds) {
-        try {
-            TimeUnit.SECONDS.sleep(seconds);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Byte - Deserilizer 
-    public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
+    // change received byte data to object
+    public static Object decodeSerialByte(byte[] data) throws IOException, ClassNotFoundException {
         
         ByteArrayInputStream byteStream = new ByteArrayInputStream(data);
         ObjectInputStream obj = new ObjectInputStream(byteStream);
         return obj.readObject();
     }
 
-    public static String messageSerializer(Socket socket) throws IOException {
-            InputStreamReader in = new InputStreamReader(socket.getInputStream());
-            BufferedReader br = new BufferedReader(in);
-            String str = br.readLine();
-            return str;
+    // while handle the monitorList, the list also handle by the thread so synchronized the handling monitorList
+    synchronized static void monitorIdAdd(String monitorId){
+        monitorList.add(monitorId);
     }
-
-    }//End of class
+}

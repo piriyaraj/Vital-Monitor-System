@@ -22,7 +22,7 @@ public class VitalMonitor {
         byte[] monitorInBytes = convertToByteArray(monitor);
 
         // Create a broadcast socket to publish monitor identity information
-        int BROADCAST_PORT = 6001;
+        int BROADCAST_PORT = 6000;
         DatagramSocket broadcastSocket = createBroadcastSocket();
 
         // Create a thread to wait for incoming TCP connections from the Gateway
