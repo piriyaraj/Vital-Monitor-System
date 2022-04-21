@@ -24,7 +24,7 @@ class VitalReader extends Thread{
     int port;                // vital monitor connection port
     InetAddress ipAddress;   // ip address of the vital monitor
     Monitor monitor;
-
+    String message;
     VitalReader(Monitor monitor){
         /**
          * pass the decoded byte array that received form the socket packet
@@ -42,32 +42,36 @@ class VitalReader extends Thread{
         monitorId = monitor.getMonitorID();
         port = monitor.getPort();
         ipAddress = monitor.getIp();
-
+        System.out.println("=== "+monitorId+" vital connected ===");
         // Receiving message from vital monitors
-        InputStreamReader input;
-        BufferedReader readMessage;
-        String message;
-
-        while(true){   // getting the message every time from the vital monitor
+        // InputStreamReader input;
+        // BufferedReader readMessage;
+        
+        Socket vitalMonitorSocket = null;
+           // getting the message every time from the vital monitor
             try {
-                Socket socket = new Socket(ipAddress, port);          // make a tcp connection 
-                // read the message
-                input = new InputStreamReader(socket.getInputStream());
-                readMessage = new BufferedReader(input);
-                message = readMessage.readLine();
+                vitalMonitorSocket = new Socket(ipAddress, port);
+                // System.out.println(this.monitorId + " is Connected");
+
+            // Receiving message from vital monitors
+            while (true) {
+                InputStreamReader in = new InputStreamReader(vitalMonitorSocket.getInputStream());
+                BufferedReader br = new BufferedReader(in);
+                String str = br.readLine();
+                System.out.println("    >>> "+str);
+            }
                 
             } catch (Exception e) {
                 // e.printStackTrace();
-                message=">>>>>connection lost from "+monitorId+"<<<<<";
+                message="=== connection lost from "+monitorId+" ===";
                 System.out.println(message);
 
                 monitorIdRemove(monitorId);
-                break;
-            }
-            System.out.println(message);
 
-            Delay(2);
-        }
+            }
+            // System.out.println(message);
+
+        
     }
     synchronized void monitorIdRemove(String monitorId){
         /**
@@ -75,15 +79,11 @@ class VitalReader extends Thread{
          */
         Gateway.monitorList.remove(monitorId);
     }
-
-    public static void Delay(int seconds) {
-        /**
-         * make a delay for the receiving the message after the delay
-         */
+    // Custom Delay
+    private static void customDelayInSeconds(int seconds) {
         try {
             TimeUnit.SECONDS.sleep(seconds);
-        } 
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -146,7 +146,7 @@ public class Gateway {
         return obj.readObject();
     }
 
-    // while handle the monitorList, the list also handle by the thread so synchronized the handling monitorList
+    //while handle the monitorList, the list also handle by the thread so synchronized the handling monitorList
     synchronized static void monitorIdAdd(String monitorId){
         monitorList.add(monitorId);
     }
