@@ -1,13 +1,5 @@
-```
-Department of Computer Engineering
-Faculty of Engineering
-UNIVERSITY OF PERADENIYA
-```
-# CO327: Operating Systems
+# Vital Monitor System-Operating Systems
 
-```
-Project 01 - Vital Monitor System
-```
 **Aim:** This projectaims to gethands-onexperienceinareal-worldscenario.Youwill
 requiretheknowledgeofnetworking,operatingsystems,andprogrammingtocomplete
 this project.
@@ -23,24 +15,30 @@ patients are contagious.
 monitorswillhaveanIPaddress.Thesevitalmonitorswillberunningonaserver.Vital
 monitors will broadcast their identity to a specificUDP port inthe followingformat:
 <ip_addr, port, monitor_id>.
+<br>
+![Over View](img/overview.png)
+<br>
 
-
-Your tasks are as follows.
+##Implement path.
 1) Implement a gateway that discovers all of these vital monitors.
 2) Foreachdiscoveredmonitor,thegatewayshouldinitiateaTCPconnectionwith
 thevitalmonitor.ItshouldusethediscoveredportnumberandIPaddressforthis
 connection. ThisTCP connectionwill be usedto receivevitalinformationand
 alarms from vital monitors.
+<br>
 
-```
+![Data Path](img/datapath.png)
+
+<br>
+
 3) Consider thread synchronization where appropriate and implement thread
 synchronizations in your gateway implementation.
-```
-**included:**
-● Design and Architecture
-● Correct functionality
-● Code quality and good coding practices
-● Error handling
-● Synchronization
+
+**included:**<br>
+● Design and Architecture<br>
+● Correct functionality<br>
+● Code quality and good coding practices<br>
+● Error handling<br>
+● Synchronization<br>
 
 
